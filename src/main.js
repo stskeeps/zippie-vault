@@ -1,28 +1,59 @@
 // The Vue build version to load with the `import` command
 // (runtime-only or standalone) has been set in webpack.base.conf with an alias.
+
+var vault_opts = {}
+console.log('hash is ' + location.hash)
+if (location.hash.startsWith('#zippie-vault=')) {
+  vault_opts = {
+    'vaultURL': location.hash.slice('#zippie-vault='.length)
+  }
+  location.hash = ''
+}
+/* vue idiocy */
+if (location.hash.startsWith('#/zippie-vault=')) {
+  vault_opts = {
+    'vaultURL': location.hash.slice('#/zippie-vault='.length)
+  }
+  location.hash = ''
+}
+
 import Vue from 'vue'
 import App from './App'
 import Web3 from 'web3'
 import router from './router'
 
-Vue.config.productionTip = false
+var zippieprovider = require('vault-web3-provider')
+var vault = require('vault-api')
+var vaultSecp256k1 = require('vault-api/src/secp256k1.js')
+
+  
+//Vue.config.productionTip = false
 
 window.addEventListener('load', function () {
-  if (typeof web3 !== 'undefined') {
-    console.log('Web3 injected browser: OK.')
-    window.web3 = new Web3(window.web3.currentProvider)
-  } else {
-    console.log('Web3 injected browser: Fail. You should consider trying MetaMask.')
-    // fallback - use your fallback strategy (local node / hosted node + in-dapp id mgmt / fail)
-    window.web3 = new Web3(new Web3.providers.HttpProvider('http://localhost:8545'))
-  }
 
-  /* eslint-disable no-new */
-  new Vue({
-    el: '#app',
-    router,
-    template: '<App/>',
-    components: { App }
+vault.init(vault_opts).then((result) => {
+  console.log('got inited:')
+  console.log(result)
+  var provider = zippieprovider.init(vault, vaultSecp256k1, {
+    network: 'kovan'
   })
+  window.web3 = new Web3(provider)
+  zippieprovider.addAccount('m/0').then((addy) => {
+   console.log(addy)
+   /* eslint-disable no-new */
+   new Vue({
+      el: '#app',
+      router,
+      template: '<App/>',
+      components: { App }
+    })
+  })
+}, (error) => {
+  console.log('encountered error: ')
+    console.log(error)
+    if (error.error === 'launch') {
+      vault.launch(error.launch)
+    }
 })
 
+})
